@@ -106,9 +106,11 @@ jobs:
         run: |
           chart='${{ inputs.chart }}'
           app='${{ inputs.app_version }}'
+          # appVersion is the only place the image version is written. The
+          # chart falls back to it, so image.tag cannot drift from the image
+          # that was actually published.
           if [ -n "$app" ]; then
             yq -i ".appVersion = \"${app#v}\"" "$chart/Chart.yaml"
-            yq -i ".image.tag = \"$app\"" "$chart/values.yaml"
           fi
           helm lint --strict "$chart"
           helm package "$chart" --version '${{ steps.version.outputs.next }}' --destination dist
