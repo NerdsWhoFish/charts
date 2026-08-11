@@ -1,0 +1,147 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      chart:
+        description: Which chart to release
+        type: choice
+        default: dusk
+        options:
+          - dusk
+      bump:
+        description: Which part of the chart version to bump
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+      app_version:
+        description: appVersion this chart targets, e.g. v1.2.3. Leave blank to keep the current one.
+        type: string
+        required: false
+  pull_request:
+
+concurrency:
+  group: release-${{ github.ref }}
+  # Cancel superseded PR builds; never cancel a release mid-publish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: oci://ghcr.io/fetchhq/charts
+
+jobs:
+  # Linting every chart on every PR is the point: a template that only breaks
+  # under a non-default values path is invisible otherwise.
+  lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+
+      - name: Lint and render every chart
+        run: |
+          for chart in */Chart.yaml; do
+            dir=$(dirname "$chart")
+            echo "::group::$dir"
+            helm lint --strict "$dir"
+            helm template "$dir" > /dev/null
+            helm template "$dir" --set ingress.enabled=true --set persistence.enabled=false > /dev/null
+            echo "::endgroup::"
+          done
+
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      # Releasing from a topic branch produces a tag whose history is not on
+      # main, which is unpickable afterwards.
+      - name: Refuse to release off main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Release from main. This ran on ${{ github.ref }}."
+          exit 1
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v4
+
+      - name: Work out the version
+        id: version
+        run: |
+          chart='${{ inputs.chart }}'
+          current=$(helm show chart "$chart" | awk '/^version:/ {print $2}')
+          IFS=. read -r major minor patch <<< "$current"
+          case '${{ inputs.bump }}' in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            patch) patch=$((patch+1)) ;;
+          esac
+          next="${major}.${minor}.${patch}"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=${chart}-${next}" >> "$GITHUB_OUTPUT"
+          echo "Releasing $chart $current -> $next"
+
+      - name: Refuse to reuse a tag
+        run: |
+          if git rev-parse '${{ steps.version.outputs.tag }}' >/dev/null 2>&1; then
+            echo "::error::${{ steps.version.outputs.tag }} already exists."
+            exit 1
+          fi
+
+      # Everything to this point is side-effect free, and so is this. A tag is
+      # only worth cutting once the chart is known to build and render.
+      - name: Dry run
+        id: package
+        run: |
+          chart='${{ inputs.chart }}'
+          app='${{ inputs.app_version }}'
+          if [ -n "$app" ]; then
+            yq -i ".appVersion = \"${app#v}\"" "$chart/Chart.yaml"
+            yq -i ".image.tag = \"$app\"" "$chart/values.yaml"
+          fi
+          helm lint --strict "$chart"
+          helm package "$chart" --version '${{ steps.version.outputs.next }}' --destination dist
+          helm template dusk "dist/${chart}-${{ steps.version.outputs.next }}.tgz" > /dev/null
+
+      - name: Commit the version bump
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          yq -i '.version = "${{ steps.version.outputs.next }}"' '${{ inputs.chart }}/Chart.yaml'
+          git add '${{ inputs.chart }}'
+          git commit -m 'chore(${{ inputs.chart }}): release ${{ steps.version.outputs.next }}'
+          git push origin HEAD:main
+
+      - name: Tag ${{ steps.version.outputs.tag }}
+        id: tag
+        run: |
+          git tag -a '${{ steps.version.outputs.tag }}' -m '${{ steps.version.outputs.tag }}'
+          git push origin '${{ steps.version.outputs.tag }}'
+
+      - name: Push the chart
+        run: |
+          helm registry login ghcr.io \
+            --username '${{ github.actor }}' \
+            --password '${{ secrets.GITHUB_TOKEN }}'
+          helm push \
+            'dist/${{ inputs.chart }}-${{ steps.version.outputs.next }}.tgz' \
+            '${{ env.REGISTRY }}'
+
+      # A tag left behind by a failed run burns that version: the next attempt
+      # computes the one after it, and the failed tag stays forever.
+      - name: Untag a failed release
+        if: failure() && steps.tag.outcome == 'success'
+        run: |
+          git push --delete origin '${{ steps.version.outputs.tag }}' || true
+          git tag --delete '${{ steps.version.outputs.tag }}' || true
