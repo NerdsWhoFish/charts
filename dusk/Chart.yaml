@@ -1,0 +1,21 @@
+apiVersion: v2
+name: dusk
+description: A service catalog that maintains itself
+type: application
+
+# version is the chart version, appVersion is the Dusk release it defaults to.
+# They move independently: a chart-only fix bumps version alone.
+version: 0.1.0
+appVersion: "0.1.0"
+
+home: https://github.com/FetchHQ/dusk
+sources:
+  - https://github.com/FetchHQ/dusk
+keywords:
+  - catalog
+  - service-catalog
+  - developer-portal
+  - mcp
+maintainers:
+  - name: FetchHQ
+    url: https://github.com/FetchHQ

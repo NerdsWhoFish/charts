@@ -1,0 +1,57 @@
+Dusk {{ .Chart.AppVersion }} is installed as {{ include "dusk.fullname" . }}.
+
+{{- if not .Values.dusk.externalUrl }}
+
+  WARNING: dusk.externalUrl is not set, so DUSK_EXTERNAL_URL is missing and
+  Dusk will not start. Set it to the URL you reach Dusk on and upgrade:
+
+    helm upgrade {{ .Release.Name }} <chart> --set dusk.externalUrl=https://dusk.example.com
+{{- end }}
+
+1. Reach it.
+{{- if .Values.ingress.enabled }}
+{{- $scheme := ternary "https" "http" (gt (len .Values.ingress.tls) 0) }}
+{{- range $host := .Values.ingress.hosts }}
+{{- range $host.paths }}
+     {{ $scheme }}://{{ $host.host }}{{ .path }}
+{{- end }}
+{{- end }}
+{{- else }}
+   No ingress is enabled, so port-forward for now:
+
+     kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "dusk.fullname" . }} 8080:{{ .Values.service.port }}
+
+   then open http://127.0.0.1:8080
+{{- end }}
+
+2. Start onboarding at {{ include "dusk.notesURL" . }}/setup
+
+   Dusk registers its own GitHub App there. You accept and install it; there is
+   no private key or webhook secret to create by hand.
+
+3. Check DUSK_EXTERNAL_URL before you click through.
+
+   It is currently {{ if .Values.dusk.externalUrl }}{{ .Values.dusk.externalUrl | trimSuffix "/" | quote }}{{ else }}UNSET{{ end }}.
+
+   GitHub redirects back to this URL after the manifest flow and posts webhooks
+   to <DUSK_EXTERNAL_URL>/webhooks. If it is not exactly how the outside world
+   reaches Dusk, scheme and port included, the callback fails and the App is
+   created without credentials reaching Dusk. Changing it later means editing
+   the App on GitHub too, because the webhook URL is baked in at creation.
+
+{{- if not .Values.persistence.enabled }}
+
+4. Persistence is DISABLED. The SQLite index, the App private key, and the
+   webhook secret live in an emptyDir and are gone on the next restart, which
+   means onboarding again. Set persistence.enabled=true for anything real.
+{{- else }}
+
+4. Data lives on PVC {{ include "dusk.claimName" . }}, mounted at {{ .Values.dusk.dataDir }}.
+{{- if not .Values.persistence.existingClaim }}
+   Helm deletes it on uninstall. Back it up, or reinstall with
+   persistence.existingClaim to keep it.
+{{- end }}
+{{- end }}
+
+Dusk runs one replica with the Recreate strategy on purpose: SQLite on a single
+PVC has one writer. Do not raise replicaCount.
