@@ -1,11 +1,11 @@
 Dusk {{ .Chart.AppVersion }} is installed as {{ include "dusk.fullname" . }}.
 
-{{- if not .Values.dusk.externalUrl }}
+{{- if not .Values.dusk.privateHost }}
 
-  WARNING: dusk.externalUrl is not set, so DUSK_EXTERNAL_URL is missing and
+  WARNING: dusk.privateHost is not set, so DUSK_PRIVATE_HOST is missing and
   Dusk will not start. Set it to the URL you reach Dusk on and upgrade:
 
-    helm upgrade {{ .Release.Name }} <chart> --set dusk.externalUrl=https://dusk.example.com
+    helm upgrade {{ .Release.Name }} <chart> --set dusk.privateHost=https://dusk.example.com
 {{- end }}
 
 1. Reach it.
@@ -29,12 +29,12 @@ Dusk {{ .Chart.AppVersion }} is installed as {{ include "dusk.fullname" . }}.
    Dusk registers its own GitHub App there. You accept and install it; there is
    no private key or webhook secret to create by hand.
 
-3. Check DUSK_EXTERNAL_URL before you click through.
+3. Check DUSK_PRIVATE_HOST before you click through.
 
-   It is currently {{ if .Values.dusk.externalUrl }}{{ .Values.dusk.externalUrl | trimSuffix "/" | quote }}{{ else }}UNSET{{ end }}.
+   It is currently {{ if .Values.dusk.privateHost }}{{ .Values.dusk.privateHost | trimSuffix "/" | quote }}{{ else }}UNSET{{ end }}.
 
    GitHub redirects back to this URL after the manifest flow and posts webhooks
-   to <DUSK_EXTERNAL_URL>/webhooks. If it is not exactly how the outside world
+   to <DUSK_PUBLIC_HOST>/webhooks. If it is not exactly how the outside world
    reaches Dusk, scheme and port included, the callback fails and the App is
    created without credentials reaching Dusk. Changing it later means editing
    the App on GitHub too, because the webhook URL is baked in at creation.

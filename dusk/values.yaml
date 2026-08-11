@@ -28,10 +28,16 @@ serviceAccount:
   automountServiceAccountToken: false
 
 dusk:
-  # DUSK_EXTERNAL_URL, required, no trailing slash.
+  # DUSK_PRIVATE_HOST, required. Where people reach the UI and where GitHub
+  # returns the browser during setup. Host only, no path.
   # Must be how the outside world reaches Dusk, not the Service name:
   # GitHub redirects here after the App manifest flow and posts to /webhooks.
-  externalUrl: ""
+  privateHost: ""
+
+  # DUSK_PUBLIC_HOST. Where GitHub delivers webhooks, when that differs from
+  # privateHost. Set it when a public forwarder exposes only /webhooks while
+  # the UI stays on a private hostname. Defaults to privateHost.
+  publicHost: ""
 
   # DUSK_ADDR. The service and probe ports follow this port.
   addr: ":8080"

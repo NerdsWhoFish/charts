@@ -48,9 +48,13 @@ spec:
               value: {{ .Values.dusk.addr | quote }}
             - name: DUSK_DATA_DIR
               value: {{ .Values.dusk.dataDir | quote }}
-            {{- if .Values.dusk.externalUrl }}
-            - name: DUSK_EXTERNAL_URL
-              value: {{ .Values.dusk.externalUrl | trimSuffix "/" | quote }}
+            {{- if .Values.dusk.privateHost }}
+            - name: DUSK_PRIVATE_HOST
+              value: {{ .Values.dusk.privateHost | trimSuffix "/" | quote }}
+            {{- end }}
+            {{- if .Values.dusk.publicHost }}
+            - name: DUSK_PUBLIC_HOST
+              value: {{ .Values.dusk.publicHost | trimSuffix "/" | quote }}
             {{- end }}
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
