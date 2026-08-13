@@ -6,14 +6,14 @@ type: application
 # They move independently: a chart-only fix bumps version alone.
 version: 0.1.1
 appVersion: "0.1.0"
-home: https://github.com/FetchHQ/dusk
+home: https://github.com/NerdsWhoFish/dusk
 sources:
-  - https://github.com/FetchHQ/dusk
+  - https://github.com/NerdsWhoFish/dusk
 keywords:
   - catalog
   - service-catalog
   - developer-portal
   - mcp
 maintainers:
-  - name: FetchHQ
-    url: https://github.com/FetchHQ
+  - name: NerdsWhoFish
+    url: https://github.com/NerdsWhoFish

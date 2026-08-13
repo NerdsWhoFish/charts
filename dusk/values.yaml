@@ -1,7 +1,7 @@
 # Default values for the dusk chart.
 
 image:
-  repository: ghcr.io/fetchhq/dusk
+  repository: ghcr.io/nerdswhofish/dusk
   # Empty means the chart's appVersion.
   tag: ""
   pullPolicy: IfNotPresent
