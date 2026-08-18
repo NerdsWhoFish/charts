@@ -33,7 +33,8 @@ See the [chart guide](dusk/README.md) for ingress, persistence, backup, upgrade,
 ## Versioning
 
 Chart versions and Dusk versions are independent.
-The chart's `appVersion` is the exact Dusk image tag it targets, including the leading `v`.
+The chart's `appVersion` is the exact Dusk image tag it targets.
+Git release tags have a leading `v`; container tags and `appVersion` do not.
 See [ADR-0024](https://github.com/NerdsWhoFish/dusk/blob/main/adr/0024-charts-publishes-charts.md).
 
 ## Development
