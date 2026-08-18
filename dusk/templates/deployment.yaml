@@ -59,9 +59,15 @@ spec:
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- with .Values.envFrom }}
+          {{- if or .Values.dusk.existingSecret .Values.envFrom }}
           envFrom:
+            {{- with .Values.dusk.existingSecret }}
+            - secretRef:
+                name: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.envFrom }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           livenessProbe:
             httpGet:

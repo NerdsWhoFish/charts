@@ -5,9 +5,14 @@ metadata:
   name: {{ include "dusk.fullname" . }}-data
   labels:
     {{- include "dusk.labels" . | nindent 4 }}
-  {{- with .Values.persistence.annotations }}
+  {{- if or .Values.persistence.retain .Values.persistence.annotations }}
   annotations:
+    {{- if .Values.persistence.retain }}
+    helm.sh/resource-policy: keep
+    {{- end }}
+    {{- with .Values.persistence.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   accessModes:

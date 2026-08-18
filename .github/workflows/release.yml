@@ -52,6 +52,13 @@ jobs:
             helm lint --strict "$dir"
             helm template "$dir" > /dev/null
             helm template "$dir" --set ingress.enabled=true --set persistence.enabled=false > /dev/null
+            if [ "$dir" = dusk ]; then
+              app=$(helm show chart "$dir" | awk '/^appVersion:/ {print $2}')
+              case "$app" in
+                v*) ;;
+                *) echo "::error::Dusk appVersion must be the exact v-prefixed image tag, got $app"; exit 1 ;;
+              esac
+            fi
             echo "::endgroup::"
           done
 
@@ -110,11 +117,20 @@ jobs:
           # chart falls back to it, so image.tag cannot drift from the image
           # that was actually published.
           if [ -n "$app" ]; then
-            yq -i ".appVersion = \"${app#v}\"" "$chart/Chart.yaml"
+            yq -i ".appVersion = \"$app\"" "$chart/Chart.yaml"
           fi
           helm lint --strict "$chart"
           helm package "$chart" --version '${{ steps.version.outputs.next }}' --destination dist
-          helm template dusk "dist/${chart}-${{ steps.version.outputs.next }}.tgz" > /dev/null
+          rendered=$(helm template dusk "dist/${chart}-${{ steps.version.outputs.next }}.tgz")
+          if [ "$chart" = dusk ]; then
+            tag=$(yq '.appVersion' "$chart/Chart.yaml")
+            repository=$(yq '.image.repository' "$chart/values.yaml")
+            case "$tag" in
+              v*) ;;
+              *) echo "::error::Dusk appVersion must be the exact v-prefixed image tag, got $tag"; exit 1 ;;
+            esac
+            grep -F "image: \"${repository}:${tag}\"" <<< "$rendered" > /dev/null
+          fi
 
       - name: Commit the version bump
         run: |

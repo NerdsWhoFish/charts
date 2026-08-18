@@ -36,6 +36,11 @@ dusk:
   # DUSK_DATA_DIR, the PVC mount point.
   # Holds the SQLite index plus the App private key and webhook secret.
   dataDir: /var/lib/dusk
+  # Existing Secret imported as environment variables. It must contain
+  # DUSK_ENCRYPTION_KEY and either DUSK_MCP_TOKEN or DUSK_TRUSTED_NETWORK.
+  # Keeping secret values outside Helm values avoids putting them in release
+  # history and command-line arguments.
+  existingSecret: ""
 # Appended after the DUSK_* vars, so these win. Standard EnvVar entries.
 env: []
 # - name: DUSK_LOG_LEVEL
@@ -48,8 +53,11 @@ envFrom: []
 persistence:
   # Off means emptyDir: every restart forces re-onboarding. Trials only.
   enabled: true
-  # Bind an existing PVC. Needed when restoring, since the chart's PVC has no
-  # resource-policy keep annotation and an uninstall deletes it.
+  # Keep a chart-created PVC when the release is uninstalled. Credentials,
+  # action receipts, and plugins cannot all be rebuilt from git, so deleting
+  # this implicitly is the wrong default. Delete the PVC explicitly to reset.
+  retain: true
+  # Bind an existing PVC, including one restored from a snapshot.
   existingClaim: ""
   # Empty uses the default StorageClass; "-" disables provisioning.
   storageClass: ""

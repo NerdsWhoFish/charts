@@ -11,23 +11,30 @@ There is no chart repository index to add.
 
 ## Install
 
-```bash
+Create the namespace and the Secret Dusk needs before installing the chart.
+
+```zsh
+kubectl create namespace dusk
+kubectl --namespace dusk create secret generic dusk-secrets \
+  --from-literal=DUSK_ENCRYPTION_KEY="$DUSK_ENCRYPTION_KEY" \
+  --from-literal=DUSK_MCP_TOKEN="$DUSK_MCP_TOKEN"
+
 helm install dusk oci://ghcr.io/nerdswhofish/charts/dusk \
-  --set dusk.externalUrl=https://dusk.example.com
+  --namespace dusk \
+  --set dusk.privateHost=https://dusk.example.com \
+  --set dusk.existingSecret=dusk-secrets
 ```
 
-`dusk.externalUrl` must match how you actually reach the service.
+`dusk.privateHost` must match how you actually reach the service.
 It is baked into the GitHub App registration during onboarding, so a mismatch makes the setup callback fail.
+Configure the chart's Ingress values or another route before opening that URL.
+See the [chart guide](dusk/README.md) for ingress, persistence, backup, upgrade, and rollback.
 
 ## Versioning
 
-**Chart versions track the application version.**
-Releasing Dusk `v1.2.3` publishes chart `1.2.3` with `appVersion: 1.2.3`, pointing at image tag `v1.2.3`.
-
-That coupling is deliberate and is why the release is driven from the Dusk repo rather than from here.
-See [ADR-0019](https://github.com/NerdsWhoFish/dusk/blob/main/adr/0019-chart-repo.md).
-
-A chart-only fix still gets a full version, because a chart version that does not correspond to an application version is a thing nobody can reason about later.
+Chart versions and Dusk versions are independent.
+The chart's `appVersion` is the exact Dusk image tag it targets, including the leading `v`.
+See [ADR-0024](https://github.com/NerdsWhoFish/dusk/blob/main/adr/0024-charts-publishes-charts.md).
 
 ## Development
 
